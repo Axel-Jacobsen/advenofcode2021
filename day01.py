@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-with open('input.txt') as f:
+with open('inputs/d01.txt') as f:
     data = [int(s) for s in f.read().split("\n") if s != ""]
 
 def quantify(d, pred=bool):
