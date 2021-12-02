@@ -1,4 +1,15 @@
+# Advent of Code, 2021!
+
+It is truly the most wonderful time of the year! Here is my work for this year's Advent.
+
+I am doing it in Julia, Python, Rust (slowly), and hopefully another, more functional language for some problems.
+
+This is the Julia notebook. Enjoy!
+
+
 ```julia
+# Helpers, of course
+
 function quantify(data; predicate = x -> x)
     mapreduce(predicate, +, data)
 end
