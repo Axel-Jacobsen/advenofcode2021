@@ -4,7 +4,7 @@ It is truly the most wonderful time of the year! Here is my work for this year's
 
 I am doing it in Julia, Python, Rust (slowly), and hopefully another, more functional language for some problems.
 
-This is the Julia notebook. Enjoy!
+Folders hold solutions in languages other than Julia or Python. This is the Julia notebook. Enjoy!
 
 
 ```julia
