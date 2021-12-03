@@ -1,28 +1,20 @@
 use std::fs::File;
 use std::io::{self, BufReader, BufRead};
-// use std::cmp::Ordering;
-
-
-fn quantify<I, T>(data: &I, predicate: Option<fn(T) -> bool>) -> usize
-where T: Iterator<Item=T>,
-      I: Ord {
-    match predicate {
-        Some(p) => data.filter(p).count(),
-        None => data.filter(|l| l && true).count(),
-    }
-}
 
 
 fn main() -> io::Result<()> {
-    let f = File::open("input.txt")?;
-    let f = BufReader::new(f)
+    let f = File::open("../inputs/d01.txt")?;
+    let f: Vec<u16> = BufReader::new(f)
         .lines()
         .map(|l| l
             .unwrap()
             .parse::<u16>()
-            .unwrap());  // more idiomatic way to do this other than sandwiched unwraps?
+            .unwrap())
+        .collect::<Vec<u16>>();  // more idiomatic way to do this other than sandwiched unwraps?
 
-    let part1 = quantify(&f.zip(f.next()), None);
-    // let part1 = quantify(f.zip(f, None);
+    let part1: u16 = f.windows(2).map(|v| (v[0] < v[1]) as u16).sum();
+    let part2: u16 = f.windows(4).map(|v| (v[0] < v[3]) as u16).sum();
+    println!("{} {}", part1, part2);
+
     Ok(())
 }
