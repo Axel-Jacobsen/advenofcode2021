@@ -109,3 +109,53 @@ println(p2())
     1499229
     1340836560
 
+
+## Day 3!
+
+
+```julia
+data = process_inputs("03", convert = x -> map(
+        s -> parse(Int64, s),
+        split(x, "")
+    ))
+
+function to_int(arr)::Int64
+    s = 0
+    for i in length(arr):-1:1
+        s += arr[i] * 2^(length(arr) - i)
+    end
+    s
+end
+
+function p1(data)
+    ratios = sum(data) / length(data)
+    gamma = map(x -> x >= 0.5, ratios)
+    delta = map(x -> !x, gamma)
+    to_int(gamma) * to_int(delta)
+end
+
+function p2(data)
+    gammas = copy(data)
+    deltas = copy(data)
+    for i in 1:length(data[1])
+        gamma_rate = sum(gammas) / length(gammas);
+        delta_rate = sum(deltas) / length(deltas);
+        if length(gammas) > 1
+            filter!(num -> num[i] == (gamma_rate[i] >= 0.5), gammas)
+        end
+        if length(deltas) > 1
+            filter!(num -> num[i] == (delta_rate[i] < 0.5), deltas)
+        end
+    end
+    to_int(gammas[1]) * to_int(deltas[1])
+end
+
+p1(data), p2(data)
+```
+
+
+
+
+    (1307354, 482500)
+
+

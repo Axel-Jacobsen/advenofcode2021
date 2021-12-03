@@ -3,7 +3,7 @@ use std::io::{self, BufReader, BufRead};
 // use std::cmp::Ordering;
 
 
-fn quantify<I, T>(data: I, predicate: Option<fn(T) -> bool>) -> usize
+fn quantify<I, T>(data: &I, predicate: Option<fn(T) -> bool>) -> usize
 where T: Iterator<Item=T>,
       I: Ord {
     match predicate {
@@ -22,7 +22,7 @@ fn main() -> io::Result<()> {
             .parse::<u16>()
             .unwrap());  // more idiomatic way to do this other than sandwiched unwraps?
 
-    let part1 = quantify(f.zip(f.next()), None);
+    let part1 = quantify(&f.zip(f.next()), None);
     // let part1 = quantify(f.zip(f, None);
     Ok(())
 }
