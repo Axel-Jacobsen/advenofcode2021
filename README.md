@@ -42,10 +42,7 @@ end
 function p2()
     data = process_inputs("01");
     quantify(
-            zip(
-                zip(data, data[2:end], data[3:end]),
-                zip(data[2:end], data[3:end], data[4:end]),
-            ),
+            zip(data, data[4:end]),
             predicate = ((i, j),) -> sum(j) > sum(i),
         )
 end
