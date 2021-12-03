@@ -74,13 +74,13 @@ function p1()
     x = z = 0;
     for (dir, val) in data
         if dir == "forward"
-            x += val;
+            x += val
         elseif dir == "back"
-            x -= val;
+            x -= val
         elseif dir == "up"
-            z -= val;
+            z -= val
         elseif dir == "down"
-            z += val;
+            z += val
         end
     end
     x*z
@@ -91,12 +91,12 @@ function p2()
     x = z = aim = 0;
     for (dir, val) in data
         if dir == "forward"
-            x += val;
-            z += aim * val;
+            x += val
+            z += aim * val
         elseif dir == "up"
-            aim -= val;
+            aim -= val
         elseif dir == "down"
-            aim += val;
+            aim += val
         end
     end
     x*z
@@ -119,7 +119,7 @@ data = process_inputs("03", convert = x -> map(
         split(x, "")
     ))
 
-function to_int(arr)::Int64
+function to_int(arr::Array{T})::Int64 where {T<:Number}
     s = 0
     for i in length(arr):-1:1
         s += arr[i] * 2^(length(arr) - i)
@@ -138,8 +138,9 @@ function p2(data)
     gammas = copy(data)
     deltas = copy(data)
     for i in 1:length(data[1])
-        gamma_rate = sum(gammas) / length(gammas);
-        delta_rate = sum(deltas) / length(deltas);
+        gamma_rate = sum(gammas) / length(gammas)
+        delta_rate = sum(deltas) / length(deltas)
+
         if length(gammas) > 1
             filter!(num -> num[i] == (gamma_rate[i] >= 0.5), gammas)
         end
