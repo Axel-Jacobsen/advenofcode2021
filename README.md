@@ -12,24 +12,55 @@ using JupyterFormatter;
 enable_autoformat();
 
 # Helpers, of course
-function quantify(data; predicate = x -> x)
+function quantify(predicate::Function, data)
     mapreduce(predicate, +, data)
 end
 
 
-function process_inputs(day::String; convert::Function = s -> parse(Int64, s))
+function process_inputs(day::String)
+    open("inputs/d$day.txt", "r") do io
+        map(s -> parse(Int64, s), eachline(io))
+    end
+end
+
+function process_inputs(convert::Function, day::String)
     open("inputs/d$day.txt", "r") do io
         map(s -> convert(s), eachline(io))
     end
 end
+
+mutable struct ComboIterator
+    d::Vector
+    i::Int
+    j::Int
+    ComboIterator(d) = length(d) <= 2 ? nothing : new(d, 1, 2)
+end
+
+Base.eltype(::Type{ComboIterator}) = Tuple
+
+function Base.length(itr::ComboIterator)::Int64
+    n = length(itr.d)
+    bottom_triangle = (n - itr.i - 1) * (n - itr.i) / 2
+    current_row = n - itr.j
+    bottom_triangle + current_row + 1
+end
+
+function Base.iterate(itr::ComboIterator, state = (1, 2))
+    N = length(itr.d)
+    (i, j) = state
+
+    next_i = i
+    next_j = j + 1
+    if i == N
+        return nothing
+    elseif j == N
+        next_i = i + 1
+        next_j = i + 2
+    end
+    (itr.i, itr.j) = (next_i, next_j)
+    (itr.d[i], itr.d[j]), (next_i, next_j)
+end
 ```
-
-
-
-
-    process_inputs (generic function with 1 method)
-
-
 
 ## Day 1!
 
@@ -37,21 +68,23 @@ end
 ```julia
 function p1()
     data = process_inputs("01")
-    quantify(zip(data, data[2:end]), predicate = ((i, j),) -> j > i)
+    quantify(((i, j),) -> j > i, zip(data, data[2:end]))
 end
 
 
 function p2()
     data = process_inputs("01")
-    quantify(zip(data, data[4:end]), predicate = ((i, j),) -> sum(j) > sum(i))
+    quantify(((i, j),) -> j > i, zip(data, data[4:end]))
 end
 
-println(p1())
-println(p2())
+p1(), p2()
 ```
 
-    1316
-    1344
+
+
+
+    (1316, 1344)
+
 
 
 ## Day 2!
@@ -63,7 +96,7 @@ function conv_inp(inp)
     (s[1], parse(Int64, (s[2])))
 end
 
-data = process_inputs("02", convert = conv_inp)
+data = process_inputs(conv_inp, "02")
 
 
 function p1()
@@ -110,8 +143,6 @@ println(p2())
 
 
 ```julia
-data = process_inputs("03", convert = x -> map(s -> parse(Int64, s), split(x, "")))
-
 function to_int(arr::Array{T})::Int64 where {T<:Number}
     s = 0
     for i = length(arr):-1:1
@@ -120,14 +151,16 @@ function to_int(arr::Array{T})::Int64 where {T<:Number}
     s
 end
 
-function p1(data)
+function p1()
+    data = process_inputs(x -> map(s -> parse(Int64, s), split(x, "")), "03")
     ratios = sum(data) / length(data)
     gamma = map(x -> x >= 0.5, ratios)
     delta = map(x -> !x, gamma)
     to_int(gamma) * to_int(delta)
 end
 
-function p2(data)
+function p2()
+    data = process_inputs(x -> map(s -> parse(Int64, s), split(x, "")), "03")
     gammas = copy(data)
     deltas = copy(data)
     for i = 1:length(data[1])
@@ -144,7 +177,7 @@ function p2(data)
     to_int(gammas[1]) * to_int(deltas[1])
 end
 
-p1(data), p2(data)
+p1(), p2()
 ```
 
 
@@ -266,3 +299,216 @@ p1(), p2()
     (67716, 1830)
 
 
+
+## Day 5!
+
+
+```julia
+is_integer(x::T) where {T<:Number} = floor(Int, x) == x
+
+struct Point{T<:Integer}
+    x::T
+    y::T
+end
+
+struct LineSegment{T<:Integer}
+    P1::Point{T}
+    P2::Point{T}
+end
+
+function get_d5_data()::Vector{LineSegment}
+    data = process_inputs("05test") do s
+        r1_str, r2_str = split(s, " -> ")
+        x1, y1 = map(v -> parse(Int64, v), split(r1_str, ","))
+        x2, y2 = map(v -> parse(Int64, v), split(r2_str, ","))
+        x1 ≤ x2 ? LineSegment(Point(x1, y1), Point(x2, y2)) :
+        LineSegment(Point(x2, y2), Point(x1, y2))
+    end
+    sort(data, by = LS -> LS.P1.x)
+end
+
+function segments_intersect(L1::LineSegment, L2::LineSegment)::Bool
+    tn =
+        (L1.P1.x - L2.P1.x) * (L2.P1.y - L2.P2.y) -
+        (L1.P1.y - L2.P1.y) * (L2.P1.x - L2.P2.x)
+    un =
+        (L1.P1.x - L2.P1.x) * (L1.P1.y - L1.P2.y) -
+        (L1.P1.y - L2.P1.y) * (L1.P1.x - L1.P2.x)
+    D =
+        (L1.P1.x - L1.P2.x) * (L2.P1.y - L2.P2.y) -
+        (L1.P1.y - L1.P2.y) * (L2.P1.x - L2.P2.x)
+    println(L1, L2, D)
+    t, u = tn / D, un / D
+
+    if 0 ≤ tn ≤ D && 0 ≤ un ≤ D
+        x_cross, y_cross =
+            L1.P1.x + t * (L1.P2.x - L1.P1.x), L1.P1.y + t * (L1.P2.y - L1.P1.y)
+        println(tn, " ", un, " ", x_cross, " ", y_cross)
+        return is_integer(x_cross) && is_integer(y_cross)
+    end
+    false
+end
+
+is_horz(s::LineSegment) = s.P1.y == s.P2.y
+is_vert(s::LineSegment) = s.P1.x == s.P2.x
+
+function horz_vert_cross(LS1::LineSegment, LS2::LineSegment)::Int
+    if is_horz(LS1) && is_vert(LS2)
+        cross = LS1.P1.x ≤ LS2.P1.x ≤ LS1.P2.x && LS2.P1.y ≤ LS1.P1.y ≤ LS2.P2.y
+        cross
+    elseif is_vert(LS1) && is_horz(LS2)
+        cross = LS2.P1.x ≤ LS1.P1.x ≤ LS2.P2.x && LS1.P1.y ≤ LS2.P1.y ≤ LS1.P2.y
+        cross
+    elseif is_horz(LS1) && is_horz(LS2)
+        if LS1.P1.y != LS2.P2.y
+            return 0
+        end
+        length(union(Set(LS1.P1.x:LS1.P2.x), Set(LS2.P1.x:LS2.P2.x)))
+    else
+        if LS1.P1.x != LS2.P2.x
+            return 0
+        end
+        length(union(Set(LS1.P1.y:LS1.P2.y), Set(LS2.P1.y:LS2.P2.y)))
+    end
+end
+
+function p1()
+    data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
+
+    crossings = 0
+    current = Set()
+    for LS in data
+        for viewed_LS in current
+            crossings += horz_vert_cross(LS, viewed_LS)
+            if viewed_LS.P2.x < LS.P1.x
+                delete!(current, viewed_LS)
+            end
+        end
+        if is_horz(LS)
+            push!(current, LS)
+        end
+    end
+
+    crossings
+end
+
+p1()
+# data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
+```
+
+
+
+
+    16
+
+
+
+
+```julia
+function p11()
+    data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
+    min_x = minimum(map(LS -> min(LS.P1.x, LS.P2.x), data))
+    max_x = maximum(map(LS -> max(LS.P1.x, LS.P2.x), data))
+    min_x, max_x
+end
+p11()
+```
+
+
+
+
+    (0, 9)
+
+
+
+## Day 6!
+
+
+```julia
+using Memoize
+
+function get_d6_data()
+    inp_str = open(io -> read(io, String), "inputs/d06.txt", "r") |> strip
+    map(s -> parse(Int, s), split(inp_str, ","))
+end
+
+@memoize function lanternfish(internal_fish_timer::Int, n_days_left::Int)::Int
+    """
+    memoizing this would really make it a lot faster (maybe? how often are (IFT, NDL) pairs
+    showing up?
+    """
+    if internal_fish_timer >= n_days_left
+        return 1
+    end
+    lanternfish(8, n_days_left - internal_fish_timer - 1) +
+    lanternfish(6, n_days_left - internal_fish_timer - 1)
+end
+
+function p1()
+    # Internal Fish Timer ==> IFT
+    input = get_d6_data()
+    mapreduce(IFT -> lanternfish(IFT, 80), +, input)
+end
+
+function p2()
+    input = get_d6_data()
+    mapreduce(IFT -> lanternfish(IFT, 256), +, input)
+end
+p1(), p2()
+```
+
+
+
+
+    (386536, 1732821262171)
+
+
+
+Using memoization to make things quicker. Out of interest, here is the size of our cache:
+
+
+```julia
+memoize_cache(lanternfish)
+```
+
+
+
+
+    IdDict{Any, Any} with 516 entries:
+      (6, 96)  => 3612
+      (6, 171) => 2395409
+      (8, 154) => 460699
+      (8, 227) => 268920395
+      (6, 55)  => 106
+      (8, 166) => 1296477
+      (6, 116) => 19600
+      (6, 9)   => 2
+      (8, 242) => 990284884
+      (6, 86)  => 1421
+      (8, 53)  => 70
+      (6, 216) => 122267142
+      (6, 23)  => 7
+      (8, 16)  => 3
+      (8, 83)  => 950
+      (8, 17)  => 3
+      (6, 109) => 10599
+      (8, 200) => 25247007
+      (6, 122) => 34255
+      (6, 162) => 1098932
+      (6, 154) => 556666
+      (8, 205) => 39025282
+      (6, 140) => 166401
+      (6, 65)  => 236
+      (8, 5)   => 1
+      ⋮        => ⋮
+
+
+
+Not too bad. Fairly small, considering the exponential growth. A tremendous amount of repeating occurs, making this a prime usecase for a cache.
+
+## Day 7
+
+
+```julia
+
+```
