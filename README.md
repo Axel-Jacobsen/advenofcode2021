@@ -302,6 +302,8 @@ p1(), p2()
 
 ## Day 5!
 
+I gotta think harder about this one. It is probably simple but for some reason its been giving me trouble, and hasn't been as fun as the others. I'll come back to it once I have a break in finals.
+
 
 ```julia
 is_integer(x::T) where {T<:Number} = floor(Int, x) == x
@@ -403,24 +405,6 @@ p1()
 
 
 
-
-```julia
-function p11()
-    data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
-    min_x = minimum(map(LS -> min(LS.P1.x, LS.P2.x), data))
-    max_x = maximum(map(LS -> max(LS.P1.x, LS.P2.x), data))
-    min_x, max_x
-end
-p11()
-```
-
-
-
-
-    (0, 9)
-
-
-
 ## Day 6!
 
 
@@ -508,7 +492,48 @@ Not too bad. Fairly small, considering the exponential growth. A tremendous amou
 
 ## Day 7
 
+Our problem is
+$$
+    C(x;\mathbf{p}) = \sum_{i=0}^N |p_i - x|,  \quad MFC =\min_x C(x;\mathbf{p}), \quad x, p_i \in \mathbb{Z}
+$$
+where $\mathbf{p}$ is a vector of the current positions $p_i$ of the Crab Submarines, $C(x)$ is the fuel cost for target position $x$, and $MFC$ is the minimum fuel cost possible.
+
+but...
+
+Ignore mathin' and just do some map reducin'
+
 
 ```julia
+function get_d7_data()
+    inp_str = open(io -> read(io, String), "inputs/d07.txt", "r") |> strip
+    map(s -> parse(Int, s), split(inp_str, ","))
+end
 
+crab_submarine_positions = get_d7_data()
+
+min_cost(p::Vector{Int}, C::Function) = minimum(map(x -> C(x, p), minimum(p):maximum(p)))
+
+function p1()
+    C(x::Int, p::Vector{Int}) = sum(abs.(x .- p))
+    min_cost(crab_submarine_positions, C)
+end
+
+
+function p2()
+    function C(x::Int, p::Vector{Int})
+        N = abs.(x .- p)
+        sum(N .* (N .+ 1)) / 2
+    end
+    min_cost(crab_submarine_positions, C)
+end
+
+
+p1(), p2()
 ```
+
+
+
+
+    (352254, 9.9053143e7)
+
+
