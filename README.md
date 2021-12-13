@@ -381,10 +381,6 @@ function get_d6_data()
 end
 
 @memoize function lanternfish(internal_fish_timer::Int, n_days_left::Int)::Int
-    """
-    memoizing this would really make it a lot faster (maybe? how often are (IFT, NDL) pairs
-    showing up?
-    """
     if internal_fish_timer >= n_days_left
         return 1
     end
