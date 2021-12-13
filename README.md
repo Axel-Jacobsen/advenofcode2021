@@ -2,9 +2,9 @@
 
 It is truly the most wonderful time of the year! Here is my work for this year's Advent.
 
-I am doing it in Julia, Python, Rust (slowly), and hopefully another, more functional language for some problems.
+I am doing it in Julia, Rust (slowly), and hopefully another, more functional language for some problems.
 
-Folders hold solutions in languages other than Julia or Python. This is the Julia notebook. Enjoy!
+Folders hold solutions in languages other than Julia. This is the Julia notebook. Enjoy!
 
 
 ```julia
@@ -131,12 +131,14 @@ function p2()
     x * z
 end
 
-println(p1())
-println(p2())
+p1(), p2()
 ```
 
-    1499229
-    1340836560
+
+
+
+    (1499229, 1340836560)
+
 
 
 ## Day 3!
@@ -302,11 +304,18 @@ p1(), p2()
 
 ## Day 5!
 
-I gotta think harder about this one. It is probably simple but for some reason its been giving me trouble, and hasn't been as fun as the others. I'll come back to it once I have a break in finals.
-
 
 ```julia
-is_integer(x::T) where {T<:Number} = floor(Int, x) == x
+function get_d5_data()::Vector{LineSegment}
+    data = process_inputs("05") do s
+        r1_str, r2_str = split(s, " -> ")
+        x1, y1 = map(v -> parse(Int64, v), split(r1_str, ","))
+        x2, y2 = map(v -> parse(Int64, v), split(r2_str, ","))
+        x1 ≤ x2 ? LineSegment(Point(x1, y1), Point(x2, y2)) :
+        LineSegment(Point(x2, y2), Point(x1, y1))
+    end
+    sort(data, by = LS -> LS.P1.x)
+end
 
 struct Point{T<:Integer}
     x::T
@@ -318,90 +327,45 @@ struct LineSegment{T<:Integer}
     P2::Point{T}
 end
 
-function get_d5_data()::Vector{LineSegment}
-    data = process_inputs("05test") do s
-        r1_str, r2_str = split(s, " -> ")
-        x1, y1 = map(v -> parse(Int64, v), split(r1_str, ","))
-        x2, y2 = map(v -> parse(Int64, v), split(r2_str, ","))
-        x1 ≤ x2 ? LineSegment(Point(x1, y1), Point(x2, y2)) :
-        LineSegment(Point(x2, y2), Point(x1, y2))
-    end
-    sort(data, by = LS -> LS.P1.x)
-end
+is_horz(LS::LineSegment) = LS.P1.y == LS.P2.y
+is_vert(LS::LineSegment) = LS.P1.x == LS.P2.x
 
-function segments_intersect(L1::LineSegment, L2::LineSegment)::Bool
-    tn =
-        (L1.P1.x - L2.P1.x) * (L2.P1.y - L2.P2.y) -
-        (L1.P1.y - L2.P1.y) * (L2.P1.x - L2.P2.x)
-    un =
-        (L1.P1.x - L2.P1.x) * (L1.P1.y - L1.P2.y) -
-        (L1.P1.y - L2.P1.y) * (L1.P1.x - L1.P2.x)
-    D =
-        (L1.P1.x - L1.P2.x) * (L2.P1.y - L2.P2.y) -
-        (L1.P1.y - L1.P2.y) * (L2.P1.x - L2.P2.x)
-    println(L1, L2, D)
-    t, u = tn / D, un / D
-
-    if 0 ≤ tn ≤ D && 0 ≤ un ≤ D
-        x_cross, y_cross =
-            L1.P1.x + t * (L1.P2.x - L1.P1.x), L1.P1.y + t * (L1.P2.y - L1.P1.y)
-        println(tn, " ", un, " ", x_cross, " ", y_cross)
-        return is_integer(x_cross) && is_integer(y_cross)
-    end
-    false
-end
-
-is_horz(s::LineSegment) = s.P1.y == s.P2.y
-is_vert(s::LineSegment) = s.P1.x == s.P2.x
-
-function horz_vert_cross(LS1::LineSegment, LS2::LineSegment)::Int
-    if is_horz(LS1) && is_vert(LS2)
-        cross = LS1.P1.x ≤ LS2.P1.x ≤ LS1.P2.x && LS2.P1.y ≤ LS1.P1.y ≤ LS2.P2.y
-        cross
-    elseif is_vert(LS1) && is_horz(LS2)
-        cross = LS2.P1.x ≤ LS1.P1.x ≤ LS2.P2.x && LS1.P1.y ≤ LS2.P1.y ≤ LS1.P2.y
-        cross
-    elseif is_horz(LS1) && is_horz(LS2)
-        if LS1.P1.y != LS2.P2.y
-            return 0
-        end
-        length(union(Set(LS1.P1.x:LS1.P2.x), Set(LS2.P1.x:LS2.P2.x)))
+function get_points(LS::LineSegment)::Base.Iterators.Zip
+    step = LS.P1.y ≤ LS.P2.y ? 1 : -1
+    if is_horz(LS)
+        zip(LS.P1.x:LS.P2.x, [LS.P1.y for _ = LS.P1.x:LS.P2.x])
+    elseif is_vert(LS)
+        zip([LS.P1.x for _ = LS.P1.y:step:LS.P2.y], LS.P1.y:step:LS.P2.y)
     else
-        if LS1.P1.x != LS2.P2.x
-            return 0
-        end
-        length(union(Set(LS1.P1.y:LS1.P2.y), Set(LS2.P1.y:LS2.P2.y)))
+        zip(LS.P1.x:LS.P2.x, LS.P1.y:step:LS.P2.y)
     end
 end
 
-function p1()
-    data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
-
-    crossings = 0
-    current = Set()
-    for LS in data
-        for viewed_LS in current
-            crossings += horz_vert_cross(LS, viewed_LS)
-            if viewed_LS.P2.x < LS.P1.x
-                delete!(current, viewed_LS)
-            end
-        end
-        if is_horz(LS)
-            push!(current, LS)
-        end
-    end
-
-    crossings
+function crosses(LS1::LineSegment, LS2::LineSegment)::Set{Tuple{Int,Int}}
+    LS1_points = get_points(LS1)
+    LS2_points = get_points(LS2)
+    Set(intersect(LS1_points, LS2_points))
 end
 
-p1()
-# data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
+function p(data)
+    crossings = Set{Tuple{Int,Int}}()
+    for (LS1, LS2) in ComboIterator(data)
+        crossing_points = crosses(LS1, LS2)
+        union!(crossings, crossing_points)
+    end
+    length(crossings)
+end
+
+p1_data = filter(LS -> LS.P1.x == LS.P2.x || LS.P1.y == LS.P2.y, get_d5_data())
+p2_data = get_d5_data()
+
+p(p1_data), p(p2_data)
 ```
 
 
 
 
-    16
+    (4873, 19472)
 
 
 
@@ -438,6 +402,7 @@ function p2()
     input = get_d6_data()
     mapreduce(IFT -> lanternfish(IFT, 256), +, input)
 end
+
 p1(), p2()
 ```
 
@@ -500,7 +465,7 @@ where $\mathbf{p}$ is a vector of the current positions $p_i$ of the Crab Submar
 
 but...
 
-Ignore mathin' and just do some map reducin'
+Ignore mathin' and just do some map reducin'. There is probably a cleaner way to do this that relies on math, but since the system is nonlinear (due to the $\mid \cdot \mid$), it is tricky, and I am not aware of the method. The map is pretty quick.
 
 
 ```julia
@@ -517,7 +482,6 @@ function p1()
     C(x::Int, p::Vector{Int}) = sum(abs.(x .- p))
     min_cost(crab_submarine_positions, C)
 end
-
 
 function p2()
     function C(x::Int, p::Vector{Int})
