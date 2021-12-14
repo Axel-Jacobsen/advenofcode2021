@@ -28,39 +28,14 @@ function process_inputs(convert::Function, day::String)
         map(s -> convert(s), eachline(io))
     end
 end
-
-mutable struct ComboIterator
-    d::Vector
-    i::Int
-    j::Int
-    ComboIterator(d) = length(d) <= 2 ? nothing : new(d, 1, 2)
-end
-
-Base.eltype(::Type{ComboIterator}) = Tuple
-
-function Base.length(itr::ComboIterator)::Int64
-    n = length(itr.d)
-    bottom_triangle = (n - itr.i - 1) * (n - itr.i) / 2
-    current_row = n - itr.j
-    bottom_triangle + current_row + 1
-end
-
-function Base.iterate(itr::ComboIterator, state = (1, 2))
-    N = length(itr.d)
-    (i, j) = state
-
-    next_i = i
-    next_j = j + 1
-    if i == N
-        return nothing
-    elseif j == N
-        next_i = i + 1
-        next_j = i + 2
-    end
-    (itr.i, itr.j) = (next_i, next_j)
-    (itr.d[i], itr.d[j]), (next_i, next_j)
-end
 ```
+
+
+
+
+    process_inputs (generic function with 2 methods)
+
+
 
 ## Day 1!
 
@@ -342,6 +317,9 @@ function get_points(LS::LineSegment)::Base.Iterators.Zip
 end
 
 function crosses(LS1::LineSegment, LS2::LineSegment)::Set{Tuple{Int,Int}}
+    # optimization: check if LS1 and LS2 intersect at 1 point or multiple
+    # if 1 point, can speed this up quite a bit
+    # otherwise, this is fast enough for now
     LS1_points = get_points(LS1)
     LS2_points = get_points(LS2)
     Set(intersect(LS1_points, LS2_points))
@@ -349,9 +327,17 @@ end
 
 function p(data)
     crossings = Set{Tuple{Int,Int}}()
-    for (LS1, LS2) in ComboIterator(data)
-        crossing_points = crosses(LS1, LS2)
-        union!(crossings, crossing_points)
+    current = Set{LineSegment}()
+    for LS in data
+        for viewed_LS in current
+            if viewed_LS.P2.x < LS.P1.x
+                delete!(current, viewed_LS)
+            else
+                crossing_points = crosses(LS, viewed_LS)
+                union!(crossings, crossing_points)
+            end
+        end
+        push!(current, LS)
     end
     length(crossings)
 end
