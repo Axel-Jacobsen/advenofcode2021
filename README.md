@@ -437,7 +437,7 @@ memoize_cache(lanternfish)
 
 Not too bad. Fairly small, considering the exponential growth. A tremendous amount of repeating occurs, making this a prime usecase for a cache.
 
-## Day 7
+## Day 7!
 
 Our problem is
 $$
@@ -481,5 +481,73 @@ p1(), p2()
 
 
     (352254, 9.9053143e7)
+
+
+
+## Day 8!
+
+
+```julia
+function get_d8_data()
+    data = process_inputs("08") do s
+        signal_patterns, outputs = split(s, " | ")
+        sort(split(signal_patterns, " "), by = length), split(outputs, " ")
+    end
+end
+
+org_mapping = Dict(
+    Set("abcefg") => 0,
+    Set("cf") => 1,
+    Set("acdeg") => 2,
+    Set("acdfg") => 3,
+    Set("bcdf") => 4,
+    Set("abdfg") => 5,
+    Set("abdefg") => 6,
+    Set("acf") => 7,
+    Set("abcdefg") => 8,
+    Set("abcdfg") => 9,
+)
+
+function deduce_mapping(signal_pattern::Vector)
+    one, seven, four, eight =
+        signal_pattern[1], signal_pattern[2], signal_pattern[3], signal_pattern[end]
+    a = setdiff(seven, one)
+    nine_zero_six = filter(s -> length(s) == 6, signal_pattern)
+    dce = mapreduce(num -> setdiff(eight, num), union, nine_zero_six)
+    c = intersect(dce, one)
+    f = setdiff(seven, a, c)
+    d = setdiff(intersect(dce, four), c)
+    e = setdiff(dce, c, d)
+    g = setdiff(eight, four, seven, e)
+    b = setdiff(eight, a, c, d, e, f, g)
+    Dict(zip(map(pop!, (a, b, c, d, e, f, g)), "abcdefg"))
+end
+
+function p1()
+    outputs = [o for (_, o) in get_d8_data()]
+    mapreduce(s -> length(s) in [2, 3, 4, 7], +, reduce(vcat, outputs))
+end
+
+function p2()
+    sigs_outs = get_d8_data()
+
+    s = 0
+    for (signal_pattern, output) in sigs_outs
+        pairs = deduce_mapping(signal_pattern)
+        for (i, digit) in enumerate(output)
+            num = org_mapping[Set(map(s -> pairs[s], digit))]
+            s += num * 10^(4 - i)
+        end
+    end
+    s
+end
+
+p1(), p2()
+```
+
+
+
+
+    (554, 990964)
 
 
