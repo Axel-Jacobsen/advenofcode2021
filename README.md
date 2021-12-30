@@ -551,3 +551,149 @@ p1(), p2()
     (554, 990964)
 
 
+
+## Day 9!
+
+
+```julia
+function d09data()
+    process_inputs("09") do line
+        # vector of ints
+        map(s -> parse(Int, s), collect(line))
+        # convert vec of vec of int to matrix of int
+    end |> vv -> mapreduce(permutedims, vcat, vv)
+end
+
+function p1()
+    data = d09data()
+
+    total_hgt = 0
+    max_i, max_j = size(data)
+    for i = 1:max_i
+        for j = 1:max_j
+            ctr = data[i, j]
+            abv = i - 1 < 1 ? 9 : data[i-1, j]
+            lft = j - 1 < 1 ? 9 : data[i, j-1]
+            blw = i + 1 > max_i ? 9 : data[i+1, j]
+            rgt = j + 1 > max_j ? 9 : data[i, j+1]
+            is_lowpoint = all(pt -> ctr < pt, (abv, blw, rgt, lft))
+            total_hgt += is_lowpoint ? 1 + ctr : 0
+        end
+    end
+    total_hgt
+end
+
+Base.:+(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = (p1[1] + p2[1], p1[2] + p2[2])
+Base.:≤(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = p1[1] ≤ p2[1] && p1[2] ≤ p2[2]
+
+function p2()
+    D = d09data()
+
+    visited_points = Set{Tuple{Int,Int}}()
+    function spread(D, i::Int, j::Int)
+        points_to_visit = Set{Tuple{Int,Int}}([(i, j)])
+
+        count = 0
+        while length(points_to_visit) > 0
+            point = pop!(points_to_visit)
+
+            if D[point...] == 9
+                push!(visited_points, point)
+            elseif !(point in visited_points)
+                count += 1
+                push!(visited_points, point)
+                next_points = [
+                    point + dir for dir in ((1, 0), (-1, 0), (0, 1), (0, -1)) if
+                    (1, 1) ≤ point + dir ≤ size(D) && !(point + dir in visited_points)
+                ]
+                if length(next_points) > 0
+                    push!(points_to_visit, next_points...)
+                end
+            end
+        end
+        count
+    end
+
+    vals = []
+    max_i, max_j = size(D)
+    for (i, j) in Iterators.product(1:max_i, 1:max_j)
+        if !((i, j) in visited_points)
+            push!(vals, spread(D, i, j))
+        end
+    end
+    prod(sort!(vals)[end-2:end])
+end
+
+p1(), p2()
+```
+
+
+
+
+    (491, 1075536)
+
+
+
+## Day 10!
+
+
+```julia
+data = process_inputs(collect, "10")
+
+paren_pairs = Dict('(' => ')', '[' => ']', '{' => '}', '<' => '>')
+
+function gen_stack(line::Vector{Char})::Vector{Char}
+    """ if corrupt, return the corrupting char, else nothing
+    """
+    stk = [line[1]]
+    for char in line[2:end]
+        if char in (')', '>', ']', '}')
+            if paren_pairs[stk[end]] == char
+                pop!(stk)
+            else
+                push!(stk, char)
+                return stk
+            end
+        else
+            push!(stk, char)
+        end
+    end
+    stk
+end
+
+function p1()
+    conversion = Dict(')' => 3, ']' => 57, '}' => 1197, '>' => 25137)
+    syntax_err_score = 0
+    mapreduce(+, data) do line
+        stk = gen_stack(line)
+        stk[end] in (')', '>', ']', '}') ? conversion[stk[end]] : 0
+    end
+end
+
+
+function p2()
+    conversion = Dict(')' => 1, ']' => 2, '}' => 3, '>' => 4)
+    scores = []
+    for line in data
+        stk = gen_stack(line)
+        if !(stk[end] in (')', '>', ']', '}'))
+            score = 0
+            while length(stk) > 0
+                score *= 5
+                score += conversion[paren_pairs[pop!(stk)]]
+            end
+            push!(scores, score)
+        end
+    end
+    sort(scores)[length(scores)÷2+1]
+end
+
+p1(), p2()
+```
+
+
+
+
+    (316851, 2182912364)
+
+
