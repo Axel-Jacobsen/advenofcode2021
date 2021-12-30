@@ -697,3 +697,83 @@ p1(), p2()
     (316851, 2182912364)
 
 
+
+## Day 11!
+
+
+```julia
+function octopus_step!(octopi)
+    """
+    At each step
+        ∀ (i,j) D_ij += 1
+        while ∃ D_ij > 9
+            ∀ D_ij > 9, D_{i ± 1},{j ± 1} += 1
+        D_ij = 0 ∀ D_i,j > 9 
+    """
+    dirs = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
+    flashed_idxs = Set{Tuple{Int,Int}}()
+    octopi .+= ones(size(octopi))
+
+    flashing_octopi = Tuple.(findall(x -> x > 9, octopi))
+    while length(flashing_octopi) > 0
+        for octidx in flashing_octopi
+            foreach(
+                dir -> octopi[octidx + dir...] += 1,
+                [dir for dir in dirs if (1, 1) ≤ octidx + dir ≤ size(octopi)],
+            )
+        end
+
+        push!(flashed_idxs, flashing_octopi...)  # add the new oc
+        flashing_octopi = Tuple.(findall(x -> x > 9, octopi))  # get all octopi w/ energy > 9
+        setdiff!(flashing_octopi, flashed_idxs)  # remove previous flashes from this step
+    end
+
+    if length(flashed_idxs) > 0
+        foreach(flashed_idx -> octopi[flashed_idx...] = 0, flashed_idxs)
+    end
+    length(flashed_idxs)
+end
+
+function p1()
+    octopi =
+        process_inputs("11test") do line
+            # vector of ints
+            map(s -> parse(Int, s), collect(line))
+            # convert vec of vec of int to matrix of int
+        end |> vv -> mapreduce(permutedims, vcat, vv)
+
+    total_flashes = 0
+    for i = 1:100
+        total_flashes += octopus_step!(octopi)
+    end
+    total_flashes
+end
+
+
+function p2()
+    octopi =
+        process_inputs("11") do line
+            # vector of ints
+            map(s -> parse(Int, s), collect(line))
+            # convert vec of vec of int to matrix of int
+        end |> vv -> mapreduce(permutedims, vcat, vv)
+
+    i = 1
+    while true
+        num_flashed_octopi = octopus_step!(octopi)
+        if num_flashed_octopi == 100
+            return i
+        end
+        i += 1
+    end
+end
+
+p1(), p2()
+```
+
+
+
+
+    (1656, 360)
+
+
