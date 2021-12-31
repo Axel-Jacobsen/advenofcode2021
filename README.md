@@ -803,11 +803,13 @@ function dfs2(graph::Dict{String,Set{String}}, can_visit::Function)::Vector{Vect
         paths = Vector{Vector{String}}()
         for con in graph[node]
             if can_visit(visited, node)
-                f = [
-                    [node, rest_of_path...] for
-                    rest_of_path in dfs_recur(con, copy(visited))
-                ]
-                append!(paths, f)
+                append!(
+                    paths,
+                    [
+                        [node, rest_of_path...] for
+                        rest_of_path in dfs_recur(con, copy(visited))
+                    ],
+                )
             end
         end
         paths
@@ -853,5 +855,96 @@ p1(), p2()
 
 
     (4241, 122134)
+
+
+
+## Day 13!
+
+
+```julia
+function get_d13_data()
+    points = Set{Tuple{Int,Int}}()
+    folds = Vector{Tuple{String,Int}}()
+
+    open("inputs/d13.txt", "r") do io
+        for line in eachline(io)
+            # We start with a bunch of points
+            nums = match(r"(\d+),(\d+)", line)
+            if nums != nothing
+                point = (parse(Int64, nums[1]), parse(Int64, nums[2]))
+                push!(points, point)
+            elseif match(r"^\s*$", line) == nothing
+                fold_instr = split(replace(line, "fold along " => ""), "=")
+                push!(folds, (fold_instr[1], parse(Int64, fold_instr[2])))
+            end
+        end
+    end
+    points, folds
+end
+
+function applyfold!(points::Set{Tuple{Int,Int}}, fold::Tuple{String,Int})
+    """ apply fold along fold[1] (either "x" or "y") = fold[2]
+    """
+    fold_idx = fold[1] == "x" ? 1 : 2
+    fold_pos = fold[2]
+
+    # foreach seems to make a 
+    foreach(points) do point
+        if point[fold_idx] > fold_pos
+            delete!(points, point)
+            if fold[1] == "x"
+                folded_point = (2fold_pos - point[fold_idx], point[2])
+
+            else
+                folded_point = (point[1], 2fold_pos - point[fold_idx])
+            end
+            push!(points, folded_point)
+        end
+    end
+end
+
+function printpoints(points::Set{Tuple{Int,Int}})
+    min_x, max_x = minimum(p -> p[1], points), maximum(p -> p[1], points)
+    min_y, max_y = minimum(p -> p[2], points), maximum(p -> p[2], points)
+
+    for i = min_y:max_y
+        for j = min_x:max_x
+            if (j, i) in points
+                print('#')
+            else
+                print(' ')
+            end
+        end
+        println()
+    end
+end
+
+function p1()
+    points, folds = get_d13_data()
+    applyfold!(points, folds[1])
+    length(points)
+end
+
+function p2()
+    points, folds = get_d13_data()
+    foreach(fold -> applyfold!(points, fold), folds)
+    printpoints(points)
+end
+
+p1(), p2()
+```
+
+    #### ###  #     ##  ###  #  # #    ### 
+    #    #  # #    #  # #  # #  # #    #  #
+    ###  #  # #    #    #  # #  # #    #  #
+    #    ###  #    # ## ###  #  # #    ### 
+    #    #    #    #  # # #  #  # #    # # 
+    #### #    ####  ### #  #  ##  #### #  #
+
+
+
+
+
+    (710, nothing)
 
 
