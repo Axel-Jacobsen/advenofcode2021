@@ -736,7 +736,7 @@ end
 
 function p1()
     octopi =
-        process_inputs("11test") do line
+        process_inputs("11") do line
             # vector of ints
             map(s -> parse(Int, s), collect(line))
             # convert vec of vec of int to matrix of int
@@ -774,6 +774,84 @@ p1(), p2()
 
 
 
-    (1656, 360)
+    (1686, 360)
+
+
+
+## Day 12!
+
+
+```julia
+function build_graph()
+    graph = Dict{String,Set{String}}()
+    process_inputs("12") do line
+        n1, n2 = split(line, "-")
+        haskey(graph, n1) ? push!(graph[n1], n2) : graph[n1] = Set([n2])
+        haskey(graph, n2) ? push!(graph[n2], n1) : graph[n2] = Set([n1])
+    end
+    graph
+end
+
+function dfs2(graph::Dict{String,Set{String}}, can_visit::Function)::Vector{Vector{String}}
+    function dfs_recur(node::String, visited::Dict{String,Int})::Vector{Vector{String}}
+        visited[node] += 1
+
+        if node == "end"
+            return [["end"]]
+        end
+
+        paths = Vector{Vector{String}}()
+        for con in graph[node]
+            if can_visit(visited, node)
+                f = [
+                    [node, rest_of_path...] for
+                    rest_of_path in dfs_recur(con, copy(visited))
+                ]
+                append!(paths, f)
+            end
+        end
+        paths
+    end
+    visited = Dict([c => 0 for c in keys(graph)])
+    dfs_recur("start", visited)
+end
+
+function p1()
+    graph = build_graph()
+    length(
+        dfs2(graph, (visited, node) -> all(islowercase, node) ? visited[node] < 2 : true),
+    )
+end
+
+function p2()
+    graph = build_graph()
+    repeatable_nodes =
+        filter(n -> all(islowercase, n) && !(n in ["start", "end"]), collect(keys(graph)))
+
+    all_paths = Set{Vector{String}}()
+    for repeat_node in repeatable_nodes
+
+        function can_visit(visited, node)
+            if node == repeat_node
+                visited[node] < 3
+            else
+                all(islowercase, node) ? visited[node] < 2 : true
+            end
+        end
+
+        for p in dfs2(graph, can_visit)
+            push!(all_paths, p)
+        end
+    end
+    length(all_paths)
+end
+
+p1(), p2()
+```
+
+
+
+
+    (4241, 122134)
 
 
