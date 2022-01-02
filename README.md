@@ -28,14 +28,18 @@ function process_inputs(convert::Function, day::String)
         map(s -> convert(s), eachline(io))
     end
 end
+
+function matrix_inputs(day::String)
+    process_inputs(day) do line
+        # vector of ints
+        map(s -> parse(Int, s), collect(line))
+        # convert vec of vec of int to matrix of int
+    end |> vv -> mapreduce(permutedims, vcat, vv)
+end
+
+Base.:+(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = (p1[1] + p2[1], p1[2] + p2[2])
+Base.:≤(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = p1[1] ≤ p2[1] && p1[2] ≤ p2[2]
 ```
-
-
-
-
-    process_inputs (generic function with 2 methods)
-
-
 
 ## Day 1!
 
@@ -556,16 +560,8 @@ p1(), p2()
 
 
 ```julia
-function d09data()
-    process_inputs("09") do line
-        # vector of ints
-        map(s -> parse(Int, s), collect(line))
-        # convert vec of vec of int to matrix of int
-    end |> vv -> mapreduce(permutedims, vcat, vv)
-end
-
 function p1()
-    data = d09data()
+    data = matrix_inputs("09")
 
     total_hgt = 0
     max_i, max_j = size(data)
@@ -583,20 +579,15 @@ function p1()
     total_hgt
 end
 
-Base.:+(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = (p1[1] + p2[1], p1[2] + p2[2])
-Base.:≤(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = p1[1] ≤ p2[1] && p1[2] ≤ p2[2]
-
 function p2()
-    D = d09data()
-
+    D = matrix_inputs("09")
     visited_points = Set{Tuple{Int,Int}}()
-    function spread(D, i::Int, j::Int)
-        points_to_visit = Set{Tuple{Int,Int}}([(i, j)])
 
+    function spread(D, i::Int, j::Int)
         count = 0
+        points_to_visit = Set{Tuple{Int,Int}}([(i, j)])
         while length(points_to_visit) > 0
             point = pop!(points_to_visit)
-
             if D[point...] == 9
                 push!(visited_points, point)
             elseif !(point in visited_points)
@@ -703,12 +694,11 @@ p1(), p2()
 
 ```julia
 function octopus_step!(octopi)
-    """
-    At each step
-        ∀ (i,j) D_ij += 1
-        while ∃ D_ij > 9
-            ∀ D_ij > 9, D_{i ± 1},{j ± 1} += 1
-        D_ij = 0 ∀ D_i,j > 9 
+    """ At each step
+    ∀ (i,j) D_ij += 1
+    while ∃ D_ij > 9
+        ∀ D_ij > 9, D_{i ± 1},{j ± 1} += 1
+    D_ij = 0 ∀ D_i,j > 9 
     """
     dirs = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
     flashed_idxs = Set{Tuple{Int,Int}}()
@@ -735,12 +725,7 @@ function octopus_step!(octopi)
 end
 
 function p1()
-    octopi =
-        process_inputs("11") do line
-            # vector of ints
-            map(s -> parse(Int, s), collect(line))
-            # convert vec of vec of int to matrix of int
-        end |> vv -> mapreduce(permutedims, vcat, vv)
+    octopi = matrix_inputs("11")
 
     total_flashes = 0
     for i = 1:100
@@ -749,14 +734,8 @@ function p1()
     total_flashes
 end
 
-
 function p2()
-    octopi =
-        process_inputs("11") do line
-            # vector of ints
-            map(s -> parse(Int, s), collect(line))
-            # convert vec of vec of int to matrix of int
-        end |> vv -> mapreduce(permutedims, vcat, vv)
+    octopi = matrix_inputs("11")
 
     i = 1
     while true
@@ -795,11 +774,9 @@ end
 function dfs2(graph::Dict{String,Set{String}}, can_visit::Function)::Vector{Vector{String}}
     function dfs_recur(node::String, visited::Dict{String,Int})::Vector{Vector{String}}
         visited[node] += 1
-
         if node == "end"
             return [["end"]]
         end
-
         paths = Vector{Vector{String}}()
         for con in graph[node]
             if can_visit(visited, node)
@@ -832,7 +809,6 @@ function p2()
 
     all_paths = Set{Vector{String}}()
     for repeat_node in repeatable_nodes
-
         function can_visit(visited, node)
             if node == repeat_node
                 visited[node] < 3
@@ -907,9 +883,9 @@ function printpoints(points::Set{Tuple{Int,Int}})
     min_x, max_x = minimum(p -> p[1], points), maximum(p -> p[1], points)
     min_y, max_y = minimum(p -> p[2], points), maximum(p -> p[2], points)
 
-    for i = min_y:max_y
-        for j = min_x:max_x
-            if (j, i) in points
+    for j = min_y:max_y
+        for i = min_x:max_x
+            if (i, j) in points
                 print('#')
             else
                 print(' ')
@@ -946,5 +922,77 @@ p1(), p2()
 
 
     (710, nothing)
+
+
+
+## Day 14!
+
+
+```julia
+function get_d14_data()
+    conversions = Dict{Tuple{Char,Char},Char}()
+    open("inputs/d14.txt", "r") do io
+        template = readline(io)
+        readline(io) # skip empty line
+        for line in eachline(io)
+            fm, to = split(line, " -> ")
+            conversions[Tuple(collect(fm))] = only(to)
+        end
+        collect(template), conversions
+    end
+end
+
+defaultinc!(d::Dict, k::Any) = k in keys(d) ? d[k] += 1 : d[k] = 1
+defaultinc!(d::Dict, k::Any, v::Int) = k in keys(d) ? d[k] += v : d[k] = v
+
+function step_smartly!(
+    polymer::Dict{Tuple{Char,Char},Int},
+    conversions::Dict{Tuple{Char,Char},Char},
+)
+    pp = copy(polymer)
+    for (pair, count) in polymer
+        if pair in keys(conversions) && count > 0
+            defaultinc!(pp, (pair[1], conversions[pair]), count)
+            defaultinc!(pp, (conversions[pair], pair[2]), count)
+            pp[pair] -= count
+        end
+    end
+    foreach(((k, v),) -> polymer[k] = v, pp)
+end
+
+function p(num_steps)
+    template, conversions = get_d14_data()
+    polymer = Dict{Tuple{Char,Char},Int}()
+
+    for pair in zip(template, template[2:end])
+        defaultinc!(polymer, pair)
+    end
+
+    for _ = 1:num_steps
+        step_smartly!(polymer, conversions)
+    end
+
+    # get char counts
+    charcounts = Dict{Char,Int}()
+    for (pair, count) in polymer
+        defaultinc!(charcounts, pair[1], count)
+        defaultinc!(charcounts, pair[2], count)
+    end
+
+    startchar, endchar = template[1], template[end]
+    counts = [
+        char in [startchar, endchar] ? (count + 1) / 2 : count / 2 for
+        (char, count) in charcounts
+    ]
+    maximum(counts) - minimum(counts)
+end
+
+p(10), p(40)
+```
+
+
+
+
+    (3213.0, 3.711743744429e12)
 
 
