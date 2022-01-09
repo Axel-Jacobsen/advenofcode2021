@@ -41,6 +41,7 @@ end
 clockmod(i::Int, m::Int) = i % m == 0 ? m : i % m
 
 cartdirs = ((-1, 0), (1, 0), (0, -1), (0, 1))
+diagdirs = ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, 1), (1, 1), (-1, -1), (1, -1))
 
 Base.:+(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = (p1[1] + p2[1], p1[2] + p2[2])
 Base.:≤(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = p1[1] ≤ p2[1] && p1[2] ≤ p2[2]
@@ -599,7 +600,7 @@ function p2()
                 count += 1
                 push!(visited_points, point)
                 next_points = [
-                    point + dir for dir in ((1, 0), (-1, 0), (0, 1), (0, -1)) if
+                    point + dir for dir in cartdirs if
                     (1, 1) ≤ point + dir ≤ size(D) && !(point + dir in visited_points)
                 ]
                 if length(next_points) > 0
@@ -705,7 +706,6 @@ function octopus_step!(octopi)
         ∀ D_ij > 9, D_{i ± 1},{j ± 1} += 1
     D_ij = 0 ∀ D_i,j > 9 
     """
-    dirs = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
     flashed_idxs = Set{Tuple{Int,Int}}()
     octopi .+= ones(size(octopi))
 
@@ -714,7 +714,7 @@ function octopus_step!(octopi)
         for octidx in flashing_octopi
             foreach(
                 dir -> octopi[octidx + dir...] += 1,
-                [dir for dir in dirs if (1, 1) ≤ octidx + dir ≤ size(octopi)],
+                [dir for dir in diagdirs if (1, 1) ≤ octidx + dir ≤ size(octopi)],
             )
         end
 
@@ -1182,3 +1182,10 @@ p1(), p2()
     (1014, 1922490999789)
 
 
+
+## Day 17!
+
+
+```julia
+
+```
