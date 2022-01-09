@@ -1146,7 +1146,6 @@ function process_packet(pkt::BITS)
         # chunks of 5 bits starting w/ 1, and then the last starts w/ 0
         return process_packet_values(pkt) |> binarrtoint
     end
-
     vs = Int[]
     lengthTypeId = bite(pkt, 1)
     if lengthTypeId == 0
