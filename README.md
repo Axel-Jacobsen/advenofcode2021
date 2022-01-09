@@ -8,8 +8,9 @@ Folders hold solutions in languages other than Julia. This is the Julia notebook
 
 
 ```julia
-using JupyterFormatter;
-enable_autoformat();
+using DataStructures
+using JupyterFormatter
+enable_autoformat()
 
 # Helpers, of course
 function quantify(predicate::Function, data)
@@ -36,6 +37,10 @@ function matrix_inputs(day::String)
         # convert vec of vec of int to matrix of int
     end |> vv -> mapreduce(permutedims, vcat, vv)
 end
+
+clockmod(i::Int, m::Int) = i % m == 0 ? m : i % m
+
+cartdirs = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 Base.:+(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = (p1[1] + p2[1], p1[2] + p2[2])
 Base.:≤(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = p1[1] ≤ p2[1] && p1[2] ≤ p2[2]
@@ -994,5 +999,76 @@ p(10), p(40)
 
 
     (3213.0, 3.711743744429e12)
+
+
+
+## Day 15!
+
+
+```julia
+M = matrix_inputs("15")
+
+struct RepeatingGrid{T} <: AbstractArray{T,2}
+    mat::Matrix{T}
+    repeat::Int
+    RepeatingGrid(m::Matrix{T}) where {T} = new{T}(m, 5)
+    RepeatingGrid(m::Matrix{T}, r::Int) where {T} = new{T}(m, r)
+end
+
+Base.size(m::RepeatingGrid) = (size(m.mat)[1] * m.repeat, size(m.mat)[2] * m.repeat)
+Base.IndexStyle(::RepeatingGrid) = IndexCartesian()
+Base.firstindex(m::RepeatingGrid) = (1, 1)
+Base.lastindex(m::RepeatingGrid) = size(m)
+
+function Base.getindex(m::RepeatingGrid, I::Vararg{Int,2})
+    i, j = I
+    matrix_i, matrix_j = size(m.mat)
+    if i > matrix_i * m.repeat || j > matrix_j * m.repeat
+        throw(BoundsError("index $i,$j out of bounds"))
+    end
+    increment = ((i - 1) ÷ matrix_i) + ((j - 1) ÷ matrix_j)
+    return clockmod(m.mat[clockmod(i, matrix_i), clockmod(j, matrix_i)] + increment, 9)
+end
+
+function astar(M::AbstractArray{Int,2}, startpt::Tuple{Int,Int}, endpt::Tuple{Int,Int})
+    h(x::Tuple{Int,Int})::Int = abs(endpt[1] - x[1]) + abs(endpt[2] - x[2])
+    Q = PriorityQueue{Tuple{Int,Int},Int}([startpt => 0])
+    risklength = Dict{Tuple{Int,Int},Int}([startpt => 0])
+
+    while !isempty(Q)
+        currentnode = dequeue!(Q)
+        if currentnode == endpt
+            break
+        end
+
+        neighbors =
+            filter(n -> ((1, 1) ≤ n ≤ size(M)), [currentnode + dir for dir in cartdirs])
+        for neighbor in neighbors
+            neighborrisk = risklength[currentnode] + M[neighbor...]
+            if !(neighbor in keys(risklength)) || neighborrisk < risklength[neighbor]
+                risklength[neighbor] = neighborrisk
+                Q[neighbor] = neighborrisk + h(neighbor)
+            end
+        end
+    end
+    risklength[endpt...]
+end
+
+function p1()
+    astar(M, (1, 1), size(M))
+end
+
+function p2()
+    G = RepeatingGrid(M)
+    astar(G, (1, 1), size(G))
+end
+
+p1(), p2()
+```
+
+
+
+
+    (714, 2948)
 
 
