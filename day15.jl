@@ -101,6 +101,8 @@ begin
 	Base.:(==)(p1::Tuple{T,T}, p2::Tuple{T,T}) where {T<:Real} = (p1[1] == p2[1] && p1[2] == p2[2])
 	Base.:≤(p1::Tuple{Int,Int}, p2::Tuple{Int,Int}) = p1[1] ≤ p2[1] && p1[2] ≤ p2[2]
 
+	clockmod(i::Int, m::Int) = i % m == 0 ? m : i % m
+	
 	dirs = ((-1,0), (1,0), (0,-1), (0,1))
 	
 	function process_inputs(convert::Function, day::String)
@@ -115,6 +117,28 @@ begin
 			map(s -> parse(Int, s), collect(line))
 			# convert vec of vec of int to matrix of int
 		end |> vv -> mapreduce(permutedims, vcat, vv)
+	end
+
+	struct RepeatingGrid{T} <: AbstractArray{T, 2}
+		mat::Matrix{T}
+		repeat::Int
+		RepeatingGrid(m::Matrix{T}) where T = new{T}(m, 5)
+		RepeatingGrid(m::Matrix{T}, r::Int) where T = new{T}(m, r)
+	end
+
+	Base.size(m::RepeatingGrid) = (size(m.mat)[1] * m.repeat, size(m.mat)[2] * m.repeat)
+	Base.IndexStyle(::RepeatingGrid) = IndexCartesian()
+	Base.firstindex(m::RepeatingGrid) = (1,1)
+	Base.lastindex(m::RepeatingGrid) = size(m)
+
+	function Base.getindex(m::RepeatingGrid, I::Vararg{Int, 2})
+		i,j = I
+		matrix_i, matrix_j = size(m.mat)
+		if i > matrix_i * m.repeat || j > matrix_j * m.repeat
+			throw(BoundsError("index $i,$j out of bounds"))
+		end
+		increment = ((i-1) ÷ matrix_i) + ((j-1) ÷ matrix_j)
+		return clockmod(m.mat[clockmod(i, matrix_i), clockmod(j, matrix_i)] + increment, 9)
 	end
 end
 
@@ -132,8 +156,8 @@ begin
 		path
 	end
 
-	function printpath(M::Matrix{Int}, prevs)
-		path = buildpath(prevs, size(M))
+	function printpath(M::AbstractArray{Int, 2}, prevs, endnode)
+		path = buildpath(prevs, endnode)
 		for i in 1:size(M)[1]
 			for j in 1:size(M)[1]
 				(i,j) in path ? print('*') : print(M[i,j])
@@ -142,7 +166,7 @@ begin
 		end
 	end
 
-	function astar(M::Matrix{Int}, startpt::Tuple{Int, Int}, endpt::Tuple{Int, Int})
+	function astar(M::AbstractArray{Int, 2}, startpt::Tuple{Int, Int}, endpt::Tuple{Int, Int})
 		h(x::Tuple{Int,Int})::Int = abs(endpt[1] - x[1]) + abs(endpt[2] - x[2])
 		Q = PriorityQueue{Tuple{Int,Int}, Int}([startpt => 0])
 		prevs = Dict{Tuple{Int, Int}, Tuple{Int, Int}}()
@@ -170,7 +194,7 @@ begin
 				end
 			end
 		end
-		println(printpath(M, prevs))
+		println(printpath(M, prevs, endpt))
 		risklength[endpt...]
 	end
 end
@@ -178,6 +202,12 @@ end
 # ╔═╡ 71d48a9f-496d-4e0a-ad3b-898e4abb02cd
 with_terminal() do
 	astar(M, (1,1), size(M))
+end
+
+# ╔═╡ 1b151e35-055b-4e39-877d-eb6e37c43f41
+with_terminal() do
+	G = RepeatingGrid(M)
+	astar(G, (1,1), size(G))
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -418,5 +448,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═d042472f-3c21-4023-a89e-8117d78a97e4
 # ╠═19c4ced5-a496-4946-a2f5-305015f9c5d9
 # ╠═71d48a9f-496d-4e0a-ad3b-898e4abb02cd
+# ╠═1b151e35-055b-4e39-877d-eb6e37c43f41
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
