@@ -875,7 +875,6 @@ function applyfold!(points::Set{Tuple{Int,Int}}, fold::Tuple{String,Int})
             delete!(points, point)
             if fold[1] == "x"
                 folded_point = (2fold_pos - point[fold_idx], point[2])
-
             else
                 folded_point = (point[1], 2fold_pos - point[fold_idx])
             end
