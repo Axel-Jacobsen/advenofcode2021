@@ -1024,7 +1024,7 @@ function Base.getindex(m::RepeatingGrid, I::Vararg{Int,2})
     i, j = I
     matrix_i, matrix_j = size(m.mat)
     if i > matrix_i * m.repeat || j > matrix_j * m.repeat
-        throw(BoundsError("index $i,$j out of bounds"))
+        throw(BoundsError(m, i, j))
     end
     increment = ((i - 1) ÷ matrix_i) + ((j - 1) ÷ matrix_j)
     return clockmod(m.mat[clockmod(i, matrix_i), clockmod(j, matrix_i)] + increment, 9)
@@ -1070,5 +1070,117 @@ p1(), p2()
 
 
     (714, 2948)
+
+
+
+## Day 16!
+
+
+```julia
+mutable struct BITS
+    bits::String
+    idx::Int
+    BITS(bits::String) = new(bits, 1)
+end
+
+function Base.iterate(B::BITS, state::Int = 1)
+    state = B.idx
+    if state > length(B)
+        return nothing
+    end
+    letteridx = ((state - 1) ÷ 4) + 1
+    bitidx = 5 - clockmod(state, 4)
+    res = (parse(Int, B.bits[letteridx], base = 16) & (1 << (bitidx - 1))) >> (bitidx - 1)
+    B.idx = state + 1
+    (res, B.idx)
+end
+
+Base.length(B::BITS) = length(B.bits) * 4
+
+binarrtoint(binarr) = parse(Int, join(binarr), base = 2)
+
+# really just cause Iterators.take is long to type
+bite(B::BITS, n::Int, post = binarrtoint) = Iterators.take(B, n) |> post
+
+function process_packet_values(pkt::BITS)
+    vs = Int[]
+    while true
+        chunk = bite(pkt, 5, collect)
+        push!(vs, chunk[2:end]...)
+        if chunk[1] == 0
+            break
+        end
+    end
+    vs
+end
+
+function process_packet_p1(pkt::BITS)
+    version, typeid = bite(pkt, 3), bite(pkt, 3)
+    if typeid == 4
+        process_packet_values(pkt)
+        return version
+    end
+    s = 0
+    lengthTypeId = bite(pkt, 1)
+    if lengthTypeId == 0
+        length_subpackets = bite(pkt, 15)
+        start_len = pkt.idx
+        while pkt.idx < start_len + length_subpackets
+            s += process_packet_p1(pkt)
+        end
+    else
+        num_subpackets = bite(pkt, 11)
+        for _ = 1:num_subpackets
+            s += process_packet_p1(pkt)
+        end
+    end
+    s + version
+end
+
+function process_packet(pkt::BITS)
+    gtInt(a, b) = Int(a > b)
+    ltInt(a, b) = Int(a < b)
+    ops = Dict([0 => +, 1 => *, 2 => min, 3 => max, 5 => gtInt, 6 => ltInt, 7 => ==])
+
+    version, typeid = bite(pkt, 3), bite(pkt, 3)
+    if typeid == 4
+        # chunks of 5 bits starting w/ 1, and then the last starts w/ 0
+        return process_packet_values(pkt) |> binarrtoint
+    end
+
+    vs = Int[]
+    lengthTypeId = bite(pkt, 1)
+    if lengthTypeId == 0
+        length_subpackets = bite(pkt, 15)
+        start_len = pkt.idx
+        while pkt.idx < start_len + length_subpackets
+            push!(vs, process_packet(pkt))
+        end
+    else
+        num_subpackets = bite(pkt, 11)
+        for _ = 1:num_subpackets
+            push!(vs, process_packet(pkt))
+        end
+    end
+    ops[typeid](vs...)
+end
+
+function p1()
+    B = process_inputs(s -> BITS(s), "16")[1]  # id func to just get the string
+    process_packet_p1(B)
+end
+
+function p2()
+    B = process_inputs(s -> BITS(s), "16")[1]
+    process_packet(B)
+end
+
+p1(), p2()
+```
+
+
+
+
+    (1014, 1922490999789)
 
 
