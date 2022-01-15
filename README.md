@@ -1184,7 +1184,7 @@ p1(), p2()
 
 ```julia
 xmin, xmax, ymin, ymax =
-    process_inputs("17test") do line
+    process_inputs("17") do line
         match(r"x=(-?\d+)..(-?\d+), y=(-?\d+)..(-?\d+)", line).captures |>
         s -> map(v -> parse(Int, v), s)
     end |> pop!
@@ -1194,56 +1194,42 @@ xmin, xmax, ymin, ymax =
 V0y(y::Int, n::Int; a::Int = -1) = y / n - a * (n - 1) / 2
 
 # take integer solutions for V0y
-permissible_V0ys(y::Int; a = -1) =
-    filter(isinteger, V0y.(y, -abs(y):abs(y), a = a)) |> unique
+permissible_V0ys(y::Int; a = -1) = filter(isinteger, V0y.(y, 1:500, a = a)) |> unique
 
 # scan through all ys for all permissible solutions 
 all_permissible_V0ys = reduce(vcat, permissible_V0ys.(ymin:ymax)) |> unique
 
 function p1()
-    # Vy = 0 at max height
+    # Vy = 0 at max height|
     maxheight(V0y; a = -1) = V0y <= 0 ? 0 : abs(a) * V0y * (V0y + 1) / 2
     map(maxheight, all_permissible_V0ys) |> maximum
 end
 
+# from initially picking a very large maximum n and lowering it until the
+# number of results from p2() changes, we find that the max n is 300
 permissible_n_V0ys(y::Int; a = -1) =
-    filter(p -> isinteger(p[2]), (n -> (n, V0y(y, n, a = a))).(-abs(y):abs(y))) |> unique
-all_permissible_n_V0ys = reduce(vcat, permissible_n_V0ys.(ymin:ymax)) |> unique
+    filter(p -> isinteger(p[2]), (n -> (n, V0y(y, n, a = a))).(1:300))
+
+all_permissible_n_V0ys = reduce(vcat, permissible_n_V0ys.(ymin:ymax))
 
 function p2()
     vs = []
     for (n, V0y) in all_permissible_n_V0ys
         for V0x = 1:xmax
-            if xmin ≤ sum([V0x - j for j = 0:n-1]) ≤ xmax
+            if xmin ≤ sum([max(0, V0x - j) for j = 0:n-1]) ≤ xmax
                 push!(vs, (V0x, V0y))
             end
         end
     end
-    vs |> length
+    vs |> unique |> length
 end
 
-p1(), "Part 2 is unfinished"
+p1(), p2()
 ```
 
 
 
 
-    (45.0, "Part 2 is unfinished")
-
-
-
-## Day 18!
-
-this is so tree-like that I am nauseous
-
-
-```julia
-
-```
-
-
-
-
-    "[[1,2],3]"
+    (11175.0, 3540)
 
 
