@@ -1160,7 +1160,7 @@ function process_packet(pkt::BITS)
 end
 
 function p1()
-    B = process_inputs(s -> BITS(s), "16")[1]  # id func to just get the string
+    B = process_inputs(s -> BITS(s), "16")[1]
     process_packet_p1(B)
 end
 
@@ -1194,7 +1194,7 @@ xmin, xmax, ymin, ymax =
 V0y(y::Int, n::Int; a::Int = -1) = y / n - a * (n - 1) / 2
 
 # take integer solutions for V0y
-permissible_V0ys(y::Int; a = -1) = filter(isinteger, V0y.(y, 1:500, a = a)) |> unique
+permissible_V0ys(y::Int; a = -1) = filter(isinteger, V0y.(y, 1:300, a = a)) |> unique
 
 # scan through all ys for all permissible solutions 
 all_permissible_V0ys = reduce(vcat, permissible_V0ys.(ymin:ymax)) |> unique
@@ -1231,5 +1231,181 @@ p1(), p2()
 
 
     (11175.0, 3540)
+
+
+
+## Day 18!
+
+
+```julia
+# a julia trick I learned this week was using shortcutting for conditional assignment.
+# I like that it takes just 1 line, and I don't think it is less readable because of it.
+
+mutable struct BinaryTreeNode
+    parent::Union{Nothing,BinaryTreeNode}
+    L::Union{Int,BinaryTreeNode}
+    R::Union{Int,BinaryTreeNode}
+
+    function BinaryTreeNode(L::Union{Int,BinaryTreeNode}, R::Union{Int,BinaryTreeNode})
+        x = new(nothing, L, R)
+        # assign the parent field of each child to the newly created node
+        isa(x.L, BinaryTreeNode) && (x.L.parent = x)
+        isa(x.R, BinaryTreeNode) && (x.R.parent = x)
+        x
+    end
+    function BinaryTreeNode(snailfish_num::Vector)::BinaryTreeNode
+        # recursion is heavenly
+        lchild, rchild = snailfish_num
+        BinaryTreeNode(
+            isa(lchild, Vector) ? BinaryTreeNode(lchild) : lchild,
+            isa(rchild, Vector) ? BinaryTreeNode(rchild) : rchild,
+        )
+    end
+end
+
+isleaf(b::BinaryTreeNode) = isa(b.L, Int) && isa(b.R, Int)
+
+function find_explodable_BTN(tree::BinaryTreeNode)::Union{BinaryTreeNode,Nothing}
+    # find left-most pair that is depth > 4, do a lil DFS
+    stack = Vector{Tuple{Int,BinaryTreeNode}}([(1, tree)])
+    while !isempty(stack)
+        depth, node = pop!(stack)
+
+        if depth > 4 && isleaf(node)
+            return node
+        end
+
+        # order maters here - since we search left-most first, push node.L last
+        isa(node.R, BinaryTreeNode) && push!(stack, (depth + 1, node.R))
+        isa(node.L, BinaryTreeNode) && push!(stack, (depth + 1, node.L))
+    end
+end
+
+function find_splittable_num(
+    node::BinaryTreeNode,
+)::Union{Nothing,Tuple{BinaryTreeNode,Symbol}}
+    if isa(node.L, BinaryTreeNode)
+        a = find_splittable_num(node.L)
+        if a != nothing
+            return a
+        end
+    elseif node.L ≥ 10
+        return (node, :L)
+    end
+    if isa(node.R, BinaryTreeNode)
+        a = find_splittable_num(node.R)
+        if a != nothing
+            return a
+        end
+    elseif node.R ≥ 10
+        return (node, :R)
+    end
+end
+
+function find_closest_LR(
+    node::BinaryTreeNode,
+    s::Symbol,
+)::Union{Nothing,Tuple{BinaryTreeNode,Symbol}}
+    """ Find right- or left- most regular number, and return it's node.
+        `s` is the symbol :L or :R.
+    """
+    # dive down this branch looking for the right- or left-most node, depending on s
+    dive(n::BinaryTreeNode, s::Symbol) =
+        isa(getfield(n, s), Int) ? (n, s) : dive(getfield(n, s), s)
+
+    # when diving, we go opposite direction of the chiral search - and if the symbol
+    # is not :L or :R, then yell at the programmer
+    otherdir = s == :R ? :L : (s == :L ? :R : error("s must be :L or :R"))
+
+    p = node.parent
+    if getfield(p, s) != node
+        return isa(getfield(p, s), Int) ? (p, s) : dive(getfield(p, s), otherdir)
+    else
+        while p.parent != nothing
+            node, p = p, p.parent
+            if getfield(p, s) != node
+                return isa(getfield(p, s), Int) ? (p, s) : dive(getfield(p, s), otherdir)
+            end
+        end
+    end
+end
+
+function explode!(tree::BinaryTreeNode)::Bool
+    # ret true if tree was changed
+    n = find_explodable_BTN(tree)
+    if n == nothing
+        return false
+    end
+
+    # get the leftmost and rightmost nodes
+    left_neighbor_symbol = find_closest_LR(n, :L)
+    right_neighbor_symbol = find_closest_LR(n, :R)
+
+    # add the exploding node to the neighbors - remember, symbol is :L or :R
+    if left_neighbor_symbol != nothing
+        left_neighbor, symbol = left_neighbor_symbol
+        setfield!(left_neighbor, symbol, getfield(left_neighbor, symbol) + n.L)
+    end
+    if right_neighbor_symbol != nothing
+        right_neighbor, symbol = right_neighbor_symbol
+        setfield!(right_neighbor, symbol, getfield(right_neighbor, symbol) + n.R)
+    end
+
+    # set the exploding node to a regular number 0
+    n.parent.L == n ? (n.parent.L = 0) : (n.parent.R = 0)
+    true
+end
+
+function split!(tree::BinaryTreeNode)::Bool
+    # ret true if tree was changed
+    node_s = find_splittable_num(tree)
+    if node_s == nothing
+        return false
+    end
+    n, s = node_s
+    splittable_num = getfield(n, s)
+    splitted_num = BinaryTreeNode(Int[floor(splittable_num / 2), ceil(splittable_num / 2)])
+    splitted_num.parent = n
+    setfield!(n, s, splitted_num)
+    true
+end
+
+function reduce!(tree::BinaryTreeNode)::BinaryTreeNode
+    while true
+        if !(explode!(tree) || split!(tree))  # thx short-circuiting
+            return tree
+        end
+    end
+end
+
+function Base.:+(t1::BinaryTreeNode, t2::BinaryTreeNode)::BinaryTreeNode
+    v = BinaryTreeNode(deepcopy(t1), deepcopy(t2))
+    reduce!(v)
+end
+
+function magnitude(b::BinaryTreeNode)
+    left_num = isa(b.L, Int) ? b.L : magnitude(b.L)
+    right_num = isa(b.R, Int) ? b.R : magnitude(b.R)
+    3 * left_num + 2 * right_num
+end
+
+function p1()
+    nums = process_inputs(s -> Meta.parse(s) |> eval |> BinaryTreeNode, "18")
+    reduce(+, nums) |> magnitude
+end
+
+function p2()
+    nums = process_inputs(s -> Meta.parse(s) |> eval |> BinaryTreeNode, "18")
+    pairs = filter(t -> t[1] != t[2], collect(Iterators.product(nums, nums)))
+    mapreduce(t -> t[1] + t[2] |> magnitude, max, pairs)
+end
+
+p1(), p2()
+```
+
+
+
+
+    (2541, 4647)
 
 
